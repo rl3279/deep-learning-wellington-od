@@ -35,19 +35,20 @@ class SimulationHelpers:
                     arg = pd.Series(arg)
                     arg.plot(grid=True, figsize=figsize,
                              ax=ax[i // row_lim, i % row_lim] if n > row_lim else ax[i % row_lim],
-                             label=f"training for Time Series: {i}"
+                             label=f"training"
                              )
                 for i, pred in enumerate(preds):
                     pred = pd.Series(pred)
 
                     pred.plot(grid=True, figsize=figsize,
                               ax=ax[i // row_lim, i % row_lim] if n > row_lim else ax[i % row_lim],
-                              label=f"reconstruct for Time Series: {i}"
+                              label=f"reconstruct"
                               )
 
                 for i in range(n):
                     a = ax[i // row_lim, i % row_lim] if n > row_lim else ax[i % row_lim]
-                    a.scatter(markers, preds.T[markers, i], label="outliers", c='g', s=150)
+                    a.scatter(markers, preds.T[markers, i], label="outliers", c='c', s=80)
+                    a.title.set_text(f"Time Series: {i}")
 
         plt.legend()
         plt.savefig('lstm_reconstruction.png')

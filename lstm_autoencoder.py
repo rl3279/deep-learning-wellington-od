@@ -106,21 +106,19 @@ if __name__ == "__main__":
     helper = SimulationHelpers()
 
     # parameters
-    total_time = 10000
-    seq_size = 10
+    total_time = 20000
+    seq_size = 50
     n_feature = 3
 
     # data
-
     d = DataGeneration(total_time=total_time, seq_size=seq_size)
     x_normal = d.multi_data()
 
-
     # model training and prediction
-    # model = MyModel(seq_size, n_feature)
-    # model.compile(optimizer='adam', loss='mse')
-    # model.fit(x_normal, x_normal, epochs=80, batch_size=512)
-    # model.save('tmp_model')
+    model = MyModel(seq_size, n_feature)
+    model.compile(optimizer='adam', loss='mse')
+    model.fit(x_normal, x_normal, epochs=80, batch_size=512)
+    model.save('tmp_model')
 
     # model prediction/reconstruction
     model = keras.models.load_model('tmp_model')
