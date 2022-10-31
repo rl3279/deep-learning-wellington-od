@@ -2,6 +2,7 @@ from collections.abc import Iterable
 import random
 from class_basesimulation import BaseSimulation
 from class_simulationhelper import SimulationHelpers
+from pyod.utils.stat_models import pairwise_distances_no_broadcast
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -22,7 +23,6 @@ class DataGeneration:
         self.seq_size = seq_size  # length of looking back
         self.n_feature = n_feature
         self.sim = BaseSimulation()
-
 
     def to_sequences(self):
         seq_normal = []
@@ -91,12 +91,11 @@ def reconstruction(seq_data, n_features, seq_size):
         for j in range(len(uni_seq)):
             uni = np.append(uni, uni_seq[j, 0])
 
-        print(uni)
         uni = np.append(uni, uni_seq[-1, 1:])
         multi.append(uni)
 
     multi = np.array(multi)
-    return multi
+    return multi.T
 
 
 if __name__ == "__main__":
@@ -116,11 +115,12 @@ if __name__ == "__main__":
     d = DataGeneration(total_time=total_time, seq_size=seq_size)
     x_normal = d.multi_data()
 
+
     # model training and prediction
-    model = MyModel(seq_size, n_feature)
-    model.compile(optimizer='adam', loss='mse')
-    model.fit(x_normal, x_normal, epochs=80, batch_size=512)
-    model.save('tmp_model')
+    # model = MyModel(seq_size, n_feature)
+    # model.compile(optimizer='adam', loss='mse')
+    # model.fit(x_normal, x_normal, epochs=80, batch_size=512)
+    # model.save('tmp_model')
 
     # model prediction/reconstruction
     model = keras.models.load_model('tmp_model')
@@ -129,6 +129,11 @@ if __name__ == "__main__":
     x_reconstructed = reconstruction(x_normal, n_feature, seq_size)
     pred_reconstructed = reconstruction(pred, n_feature, seq_size)
 
+    distances = pairwise_distances_no_broadcast(x_reconstructed, pred_reconstructed)
+    ind = np.argpartition(distances, -1000)[-1000:]
+
+    print(ind)
+    print(distances[ind])
     # plotting
-    helper.plot(args=x_reconstructed, preds=pred_reconstructed)
+    helper.plot(args=x_reconstructed.T, preds=pred_reconstructed.T, markers=ind)
     print("done")

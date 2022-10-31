@@ -7,7 +7,7 @@ from scipy.stats import norm
 
 class SimulationHelpers:
 
-    def plot(self, args, figsize=(20, 14), func=None, row_lim=4, preds=None):
+    def plot(self, args, figsize=(20, 14), func=None, row_lim=4, preds=None, markers=None):
         n = len(args)
 
         fig, ax = plt.subplots(n // row_lim + 1, min(row_lim, n), sharey=True)
@@ -34,17 +34,24 @@ class SimulationHelpers:
                 for i, arg in enumerate(args):
                     arg = pd.Series(arg)
                     arg.plot(grid=True, figsize=figsize,
-                             ax=ax[i // row_lim, i % row_lim] if n > row_lim else ax[i % row_lim]
+                             ax=ax[i // row_lim, i % row_lim] if n > row_lim else ax[i % row_lim],
+                             label=f"training for Time Series: {i}"
                              )
                 for i, pred in enumerate(preds):
                     pred = pd.Series(pred)
+
                     pred.plot(grid=True, figsize=figsize,
-                              ax=ax[i // row_lim, i % row_lim] if n > row_lim else ax[i % row_lim]
+                              ax=ax[i // row_lim, i % row_lim] if n > row_lim else ax[i % row_lim],
+                              label=f"reconstruct for Time Series: {i}"
                               )
 
+                for i in range(n):
+                    a = ax[i // row_lim, i % row_lim] if n > row_lim else ax[i % row_lim]
+                    a.scatter(markers, preds.T[markers, i], label="outliers", c='g', s=150)
+
+        plt.legend()
         plt.savefig('lstm_reconstruction.png')
         plt.show()
-
 
     def gen_rand_cov_mat(self, n: int, sigma=None):
         A = np.random.rand(n, n)
