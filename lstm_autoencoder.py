@@ -1,4 +1,7 @@
+from collections.abc import Iterable
+import random
 from class_basesimulation import BaseSimulation
+from class_simulationhelper import SimulationHelpers
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -6,51 +9,57 @@ import tensorflow as tf
 import keras
 
 
+def random_perturb_1(x: Iterable):
+    # on geom brownian
+    return 0.0001 * (np.random.rand(len(x)) * 2 - 1) + 0.001 * (
+            np.cos(x) + np.sin(x - 0.01)
+    )
+
+
 class DataGeneration:
-    def __init__(self, total_time = 10000, seq_size = 100):
-
-        self.total_time = total_time
-        self.seq_size = seq_size
-
-        sim = BaseSimulation()
-        self.data = sim.geom_brownian_process(n=total_time, mu=0.1, sigma=0.1)
+    def __init__(self, total_time=10000, seq_size=10, n_feature=3):
+        self.total_time = total_time  # length of simulation duration
+        self.seq_size = seq_size  # length of looking back
+        self.n_feature = n_feature
+        self.sim = BaseSimulation()
 
 
     def to_sequences(self):
-        sequences = []
-        for i in range(len(self.data)-self.seq_size):
-            sequences.append(self.data[i:i+self.seq_size])
+        seq_normal = []
+        seq_outlier = []
+        for i in range(len(self.data_normal) - self.seq_size):
+            seq_normal.append(self.data_normal[i:i + self.seq_size])
+            seq_outlier.append(self.data_outlier[i:i + self.seq_size])
+        return np.array(seq_normal), np.array(seq_outlier)
 
-        return np.array(sequences)
+    def multi_data(self):
+        helper = SimulationHelpers()
+        sigma = 0.02
+        Sig = helper.gen_rand_cov_mat(
+            self.n_feature,
+            # sigma = sigma
+        )
 
-# class DataGeneration:
-#     def __init__(self, size=300, time_steps=100):
-#         self.size = size
-#         self.data_normal = []
-#         self.data_outlier = []
-#
-#         sim = BaseSimulation()
-#         for i in range(size):
-#             normal = sim.geom_brownian_process(n=time_steps, mu=0.1, sigma=0.1)
-#             normal_outlier = pd.Series(sim.add_outlier(normal, count=2, thresh_z=3))
-#
-#             self.data_normal.append(normal)
-#             self.data_outlier.append(normal_outlier)
-#
-#         self.data_normal = np.array(self.data_normal)
-#         self.data_outlier = np.array(self.data_outlier)
+        data = self.sim.correlated_brownian_process(n=self.total_time, mu=0, cov_mat=Sig, S0=100).T
+
+        X = temporalize(X=data, seq_size=self.seq_size)
+
+        X = np.array(X)
+        X = X.reshape(X.shape[0], self.seq_size, self.n_feature)
+
+        return X
 
 
 class MyModel(tf.keras.Model):
-    def __init__(self, seq_size):
+    def __init__(self, seq_size, n_features):
         super().__init__()
         self.seq_size = seq_size
-        self.lstm1 = tf.keras.layers.LSTM(128, activation = tf.nn.tanh, return_sequences=True)
-        self.lstm2 = tf.keras.layers.LSTM(64, activation = tf.nn.tanh, return_sequences = False)
+        self.lstm1 = tf.keras.layers.LSTM(128, activation=tf.nn.tanh, return_sequences=True)
+        self.lstm2 = tf.keras.layers.LSTM(64, activation=tf.nn.tanh, return_sequences=False)
         self.repeat_v = tf.keras.layers.RepeatVector(self.seq_size)
         self.lstm3 = tf.keras.layers.LSTM(64, activation=tf.nn.tanh, return_sequences=True)
         self.lstm4 = tf.keras.layers.LSTM(128, activation=tf.nn.tanh, return_sequences=True)
-        self.time_distribute = tf.keras.layers.TimeDistributed(tf.keras.layers.Dense(1))
+        self.time_distribute = tf.keras.layers.TimeDistributed(tf.keras.layers.Dense(n_features))
 
     def call(self, inputs):
         x = self.lstm1(inputs)
@@ -62,77 +71,64 @@ class MyModel(tf.keras.Model):
         return x
 
 
+def temporalize(X, seq_size):
+    output_X = []
+
+    for i in range(len(X) - seq_size + 1):
+        output_X.append(X[i:i + seq_size, :])
+
+    return output_X
+
+
+def reconstruction(seq_data, n_features, seq_size):
+    multi = []
+    for i in range(n_features):
+        uni_seq = seq_data[:, :, i]
+
+        uni = np.array([])
+        j = 0
+
+        for j in range(len(uni_seq)):
+            uni = np.append(uni, uni_seq[j, 0])
+
+        print(uni)
+        uni = np.append(uni, uni_seq[-1, 1:])
+        multi.append(uni)
+
+    multi = np.array(multi)
+    return multi
+
+
 if __name__ == "__main__":
-    #print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
-    d = DataGeneration()
-    data = d.data
+    # system setup
+    print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
+    print("Num GPUs Available: ", tf.config.list_physical_devices('GPU'))
+    random.seed(10)
+    helper = SimulationHelpers()
 
-    sequences = d.to_sequences()
-    x = sequences.reshape(sequences.shape + (1,))
+    # parameters
+    total_time = 10000
+    seq_size = 10
+    n_feature = 3
 
-    print(data.shape)
+    # data
 
-    # # data_normal = d.data_normal
-    # # data_normal = data_normal.reshape(len(data_normal), len(data_normal[0]), 1)
-    # #
-    # # data_outlier = d.data_outlier
-    # # print(data_outlier)
-    # # data_outlier = data_outlier.reshape(len(data_outlier), len(data_outlier[0]), 1)
-    # #
-    # #
-    with tf.device("/CPU:0"):
-        model = MyModel(len(x[1]))
-        model.compile(optimizer='adam', loss='mse')
+    d = DataGeneration(total_time=total_time, seq_size=seq_size)
+    x_normal = d.multi_data()
 
-        model.fit(x, x, epochs=40, batch_size = 32)
-        prediction = model.predict(x)
-        print(prediction.shape)
+    # model training and prediction
+    model = MyModel(seq_size, n_feature)
+    model.compile(optimizer='adam', loss='mse')
+    model.fit(x_normal, x_normal, epochs=80, batch_size=512)
+    model.save('tmp_model')
 
+    # model prediction/reconstruction
+    model = keras.models.load_model('tmp_model')
+    pred = model.predict(x_normal)
 
-        mae = np.mean(np.abs(prediction - x), axis = 1)
+    x_reconstructed = reconstruction(x_normal, n_feature, seq_size)
+    pred_reconstructed = reconstruction(pred, n_feature, seq_size)
 
-
-
-        #reconstruct
-
-        normal = np.array([])
-        pred = np.array([])
-        i = 0
-        while i <=len(x)-100:
-            normal = np.append(normal, x[i].reshape([100,]))
-            pred = np.append(pred, prediction[i].reshape([100,]))
-            i = i + 100
-
-        plt.plot(range(len(x)), normal)
-        plt.plot(range(len(pred)), pred)
-        plt.show()
-        model.save('tmp_model')
-        # # model = keras.models.load_model('tmp_model')
-        # # print(model.summary())
-        # print("done")
-        #
-        # prediction = model.predict(x)
-        # print(prediction[0])
-        # #
-        #
-        # continuous = np.array([])
-        #
-        # i = 0
-        # while i <= len(prediction)-10:
-        #     print(prediction[i])
-        #     continuous = np.append(continuous, prediction[i])
-        #     i = i+10
-        #
-        # print(len(prediction))
-        # plt.plot(range(len(continuous)), continuous)
-        # plt.plot(range(10), x[0]-0.1)
-        # plt.plot(range(10,20), prediction[10])
-        # plt.plot(range(1000), data)
-        #
-        # #plt.plot(range(10:20), x[1])
-        # # plt.plot(range(10), prediction[0])
-        # plt.show()
-        # #
-        # # #print(model.call(data_normal))
-
-
+    # plotting
+    helper.plot(args=x_reconstructed, preds=pred_reconstructed)
+    print("done")

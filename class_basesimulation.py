@@ -195,6 +195,7 @@ class BaseSimulation:
         
         return self.__overlay(process, super_process)
 
+
 if __name__ == "__main__":
     sim = BaseSimulation()
 
@@ -218,10 +219,12 @@ if __name__ == "__main__":
     )
     print(Sig)
     data = sim.correlated_brownian_process(n=10000, mu = 0, cov_mat=Sig, S0=100)
+    print(data.shape)
     helper.plot(
         *data, 
         # func = "ret"
     )
+    print(data.shape)
     # np.linalg.cholesky(Sig)
     print(helper.corr_from_cov(Sig))
     
