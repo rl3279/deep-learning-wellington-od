@@ -30,16 +30,18 @@ def lstm_run(train_data, test_data):
 
     return pred, ind
 
+
 def dense_run(train_data, test_data):
     # model training and prediction
-    model = DENSE_Model( n_feature)
+    model = DENSE_Model(n_feature)
     model.compile(optimizer='adam', loss='mse')
-    model.fit(x_normal, x_normal, epochs=80, batch_size=512)
+    model.fit(train_data, train_data, epochs=80, batch_size=512)
     model.save('dense_model')
 
     # model prediction/reconstruction
     model = keras.models.load_model('dense_model')
-    pred = model.predict(x_normal)
+    pred = model.predict(test_data)
+    print(pred.shape, test_data.shape)
 
     distances = pairwise_distances_no_broadcast(test_data, pred)
 
@@ -73,11 +75,11 @@ if __name__ == "__main__":
 
     # x_reconstructed = reconstruction(x_normal, n_feature, seq_size)
     #
-    lstm_pred, lstm_outliers = lstm_run(x_train_seq, x_test_seq)
+    #lstm_pred, lstm_outliers = lstm_run(x_train_seq, x_test_seq)
     dense_pred, dense_outliers = dense_run(x_train_whole, x_test_whole)
 
-    lstm_pred_reconstructed = reconstruction(lstm_pred, n_feature, seq_size)
-    helper.plot(args=x_test_whole.T, preds=lstm_pred.T, markers=lstm_outliers)
+    #lstm_pred_reconstructed = reconstruction(lstm_pred, n_feature, seq_size)
+    helper.plot(args=x_test_whole.T, preds=dense_pred.T, markers=dense_outliers)
 
 
 
