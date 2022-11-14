@@ -106,7 +106,6 @@ if __name__ == "__main__":
     print(f"lstm_pred shape {lstm_pred.shape}")
     print(f"dense_pred shape {dense_pred.shape}")
 
-
     # plot the curves
     # TODO
 
