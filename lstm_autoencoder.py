@@ -50,7 +50,7 @@ class DataGeneration:
         return X
 
 
-class MyModel(tf.keras.Model):
+class LSTM_Model(tf.keras.Model):
     def __init__(self, seq_size, n_features):
         super().__init__()
         self.seq_size = seq_size
@@ -69,6 +69,8 @@ class MyModel(tf.keras.Model):
         x = self.lstm4(x)
         x = self.time_distribute(x)
         return x
+
+
 
 
 def temporalize(X, seq_size):
@@ -115,10 +117,10 @@ if __name__ == "__main__":
     x_normal = d.multi_data()
 
     # model training and prediction
-    model = MyModel(seq_size, n_feature)
-    model.compile(optimizer='adam', loss='mse')
-    model.fit(x_normal, x_normal, epochs=80, batch_size=512)
-    model.save('tmp_model')
+    # model = LSTM_Model(seq_size, n_feature)
+    # model.compile(optimizer='adam', loss='mse')
+    # model.fit(x_normal, x_normal, epochs=80, batch_size=512)
+    # model.save('tmp_model')
 
     # model prediction/reconstruction
     model = keras.models.load_model('tmp_model')
