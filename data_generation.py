@@ -2,16 +2,20 @@ from class_multisimulation import MultiSimulation
 from class_simulationhelper import SimulationHelpers
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 sim = MultiSimulation()
 helper = SimulationHelpers()
+
 
 def gen_data(random_seed) -> pd.DataFrame:
     # hyperparameters to randomize:
     # data length, covariance matrix, number of dimensions, number of outliers. 
 
-    n = (np.random.choice(50) + 1)*100
-    dim = np.random.choice(np.arange(5, 16, 1))
+    # n = (np.random.choice(50) + 1)*100
+    n = 20000
+    # dim = np.random.choice(np.arange(5, 16, 1))
+    dim = 3
     cov_mat = helper.gen_rand_cov_mat(dim, random_seed=random_seed)
     n_outlier = np.random.choice(15) + 1
 
@@ -50,8 +54,13 @@ def gen_data(random_seed) -> pd.DataFrame:
     df = pd.DataFrame(perturbed_data.T)
     # dropna
     df.dropna(inplace=True)
+
+
     return df
 
+
 if __name__ == "__main__":
-    data = gen_data(random_seed=42)
+    data = gen_data(random_seed=42).to_num
+    print(data.shape)
     helper.plot(*data.values.T, func="diff")
+    plt.show()

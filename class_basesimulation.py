@@ -10,6 +10,7 @@ from class_simulationhelper import SimulationHelpers
 
 class BaseSimulation:
     """Write me"""
+
     def __overlay(self, process, super_process):
         if len(process) != len(super_process):
             raise RuntimeError("Dimension mismatch. Cannot overlay.")
@@ -20,24 +21,24 @@ class BaseSimulation:
         t = np.linspace(0, 1, n)
         W = np.random.standard_normal(size=n)
         W = np.cumsum(W) * np.sqrt(dt)  ### standard brownian motion ###
-        X = (mu - 0.5 * sigma**2) * t + sigma * W
-        return X*S0
+        X = (mu - 0.5 * sigma ** 2) * t + sigma * W
+        return X * S0
 
     def geom_brownian_process(self, n: int, mu=0.1, sigma=0.01, S0=1):
         return S0 * np.exp(self.brownian_process(n, mu, sigma))
 
     def add_seasonality(
-        self,
-        process,
-        start_idx=None,
-        amp=None,
-        freq=None,
-        diffusion=None,
-        how="full_random",
-        how_diffusion=None,
-        contamination:float=0,
-        random_seed=None,
-        seasonality_limit:int=None
+            self,
+            process,
+            start_idx=None,
+            amp=None,
+            freq=None,
+            diffusion=None,
+            how="full_random",
+            how_diffusion=None,
+            contamination: float = 0,
+            random_seed=None,
+            seasonality_limit: int = None
     ):
         if how not in ["full_random", "random_mag", "manual"]:
             warnings.warn("Invalid specification for arg 'how', default to full_random.")
@@ -49,25 +50,26 @@ class BaseSimulation:
             if how == "full_random":
                 seasonality_limit = np.random.choice(
                     list(range(len(process))),
-                ) 
+                )
                 # if full_random, generate amp, freq, diffusion, contamination randomly
                 # using process mean and std as benchmark
                 std = np.std(process)
-                amp = np.random.random() / 2 * std * np.random.choice([-1,1]) if not amp else amp
-                freq = 1/len(process) * np.random.randint(10, 100) if not freq else freq
-                diffusion = np.random.random() * std / len(process) * np.random.choice([-1,1]) if not diffusion else diffusion
+                amp = np.random.random() / 2 * std * np.random.choice([-1, 1]) if not amp else amp
+                freq = 1 / len(process) * np.random.randint(10, 100) if not freq else freq
+                diffusion = np.random.random() * std / len(process) * np.random.choice(
+                    [-1, 1]) if not diffusion else diffusion
                 how_diffusion = np.random.choice(["no", "linear", "sqrt"]) if not how_diffusion else how_diffusion
 
             elif how == "random_mag":
                 if not start_idx:
                     raise RuntimeError("Specified random_mag overlay but no start_idx is provided.")
-                
+
         else:
             raise NotImplementedError(f"how = {how} not implemented.")
 
         helper = SimulationHelpers()
         seasonality = helper.gen_seasonality(
-            n = len(process),
+            n=len(process),
             amp=amp,
             freq=freq,
             contamination=contamination,
@@ -93,21 +95,21 @@ class BaseSimulation:
         sign = thresh > 0 - (thresh <= 0)
         abs_thresh = np.abs(thresh)
         p = distr.cdf(abs_thresh)
-        mult = distr.cdf(np.abs(np.random.standard_t(df)))-0.5
+        mult = distr.cdf(np.abs(np.random.standard_t(df))) - 0.5
         z = distr.ppf(p + mult * (1 - p))
         return z * sign
 
     def add_outlier(
-        self,
-        process,
-        thresh=norm.ppf(0.95),
-        # thresh_z = 10,
-        how="full_random",
-        ma_window=10,
-        random_seed=None,
-        count=1,
-        super_process=None, 
-        outlier_indices=None
+            self,
+            process,
+            thresh=norm.ppf(0.95),
+            # thresh_z = 10,
+            how="full_random",
+            ma_window=10,
+            random_seed=None,
+            count=1,
+            super_process=None,
+            outlier_indices=None
     ):
         if how not in ["full_random", "random_mag", "manual"]:
             warnings.warn("Invalid specification for arg 'how', default to full_random.")
@@ -145,12 +147,11 @@ class BaseSimulation:
                 self.get_random_t_above_thresh(thresh, ma_window) for i in range(count)
                 # thresh_z for i in range(count)
             ]
-            
-        
+
             super_process = outlier_z * pd.Series(process).rolling(ma_window).std()
 
             return self.__overlay(process, super_process)
-        
+
         if how == "manual":
             if not super_process:
                 raise RuntimeError("Specified manual overlay but no super_process is provided.")
@@ -158,13 +159,13 @@ class BaseSimulation:
             return self.__overlay(process, super_process)
 
     def add_regime_change(
-        self, 
-        process, 
-        event_index, 
-        shift, 
-        regime_limit: int=None,
-        perturb=False, 
-        perturb_func=lambda x: 0
+            self,
+            process,
+            event_index,
+            shift,
+            regime_limit: int = None,
+            perturb=False,
+            perturb_func=lambda x: 0
     ):
         super_process = np.zeros_like(process)
         if isinstance(shift, (int, float)):
@@ -190,16 +191,16 @@ class BaseSimulation:
 
         if regime_limit:
             if event_index + regime_limit < len(super_process):
-                super_process[event_index+regime_limit+1:] = 0
-        
+                super_process[event_index + regime_limit + 1:] = 0
+
         return self.__overlay(process, super_process)
 
     def add_shift(
-        self, 
-        process, 
-        shift=None, 
-        how="full_random",
-        random_seed=None,
+            self,
+            process,
+            shift=None,
+            how="full_random",
+            random_seed=None,
     ):
 
         if how not in ["full_random", "manual"]:
@@ -219,32 +220,34 @@ class BaseSimulation:
 
         return scipyshift(process, shift, cval=np.nan)
 
+
 if __name__ == "__main__":
     sim = BaseSimulation()
     helper = SimulationHelpers()
 
+
     def random_perturb(x: Iterable):
         return 0.0001 * (np.random.rand(len(x)) * 2 - 1) + 0.001 * (
-            np.cos(x) + np.sin(x - 0.01)
+                np.cos(x) + np.sin(x - 0.01)
         )
 
 
     def random_perturb_1(x: Iterable):
         # on geom brownian
         return 0.0001 * (np.random.rand(len(x)) * 2 - 1) + 0.001 * (
-            np.cos(x) + np.sin(x - 0.01)
+                np.cos(x) + np.sin(x - 0.01)
         )
 
-    # sigma = 0.01 
+    # sigma = 0.01
     # Sig = helper.gen_rand_cov_mat(
-    #     8, 
+    #     8,
     # )
     # Sig /= 5
     # print(Sig)
     # data = sim.correlated_geometric_brownian_processes_with_CO(
-    #     n=10000, mu = 0, sigma = 0.1, cov_mat=Sig, S0=100, 
-    #     ma_window = 30, 
-    #     how = "random_mag", 
+    #     n=10000, mu = 0, sigma = 0.1, cov_mat=Sig, S0=100,
+    #     ma_window = 30,
+    #     how = "random_mag",
     #     outlier_indices = [6000]
     # )
 
